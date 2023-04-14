@@ -9,68 +9,71 @@ import plot.plot_utils as plotsie
 import pandas as pd
 
 
-sql="""
-    SELECT
-    	observation_value.obsValueID
-	    ,observation_value.obsValue
-	    ,observation_value.timePeriod
-	    ,serie.*
-	    ,indicator.categoryID
-	    ,indicator.FLARID
-	    ,indicator.indicatorLeyendNameES
-	    ,indicator.indicatorLeyendNameEN
-	    ,indicator.indicatorNameEN
-	    ,indicator.indicatorNameENShort
-	    ,indicator.indicatorNameES
-	    ,indicator.indicatorNameESShort
-	    ,indicator.indicatorPropriety
-	    ,unit_multiplier.unitMultValue
-	    ,unit_multiplier.unitMultValueES
-	    ,frequency.frequencyName
-	    ,frequency.frequencyNameES
-	    ,reference_area.refAreaName
-	    ,reference_area.refAreaNameES
-	    ,unit.unitName
-	    ,category.categoryName
-	    ,data_domain.dataDomainName
-	    ,data_domain.dataDomainPropriety
-	    ,CASE 
-		     WHEN frequencyNameES = 'Anual' AND ISNUMERIC(timePeriod) = 1 THEN CONVERT(date,timePeriod + '-12-31')
-		     --Se verifica que sea numérico
-		     WHEN frequencyNameES = 'Medio año, semestre' AND RIGHT(timePeriod,1) = 1 AND timePeriod LIKE '%B%' THEN CONVERT(date,LEFT(timeperiod,4)+ '-06-30')
-		     --Se verifica que contenga el caracter B, y en funcion de ultimo digito (para este caso #1), se genera el último día del mes de Junio
-		     WHEN frequencyNameES = 'Medio año, semestre' AND RIGHT(timePeriod, 1) = 2 AND timePeriod LIKE '%B%' THEN CONVERT(date, LEFT(timePeriod, 4) + '-12-31') 
-		     --Se verifica que contenga el caracter B, y en funcion de último digito(para este caso #2), se genera el último día del mes de Diciembre
-		     WHEN frequencyNameES = 'Mensual' AND ISNUMERIC(RIGHT(timePeriod,2)) = 1 THEN DATEADD(DAY, 14, DATEADD(MONTH, RIGHT(timePeriod, 2) - 1, CONVERT(date, LEFT(timePeriod, 4)))) 
-		     --Se verifica que el campo sea numérico.
-		     WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 1 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 30, DATEADD(MONTH, 2, CONVERT(date, LEFT(timePeriod, 4)))) 
-		     --Se verifica que contenga el caracter Q, y en función de último digito (para este caso #1), se genera el último día del mes Marzo
-		     WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 2 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 29, DATEADD(MONTH, 5, CONVERT(date, LEFT(timePeriod, 4)))) 
-		     --Se verifica que contenga el caracter Q, y en función de último digito (para este caso #2), se genera el último día del mes Junio
-		     WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 3 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 29, DATEADD(MONTH, 8, CONVERT(date, LEFT(timePeriod, 4)))) 
-		     --Se verifica que contenga el caracter Q, y en función de último digito (para este caso #3), se genera el último día del mes Septiembre 
-		     WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 4 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 30, DATEADD(MONTH, 11, CONVERT(date, LEFT(timePeriod, 4)))) 
-		     --Se verifica que contenga el caracter Q, y en función de último digito (para este caso #4), segenera el último día del mes Diciembre 
-		     WHEN frequencyNameES = 'Semanal' AND ISNUMERIC(RIGHT(timePeriod, 2)) = 1 THEN DATEADD(DAY, 6, DATEADD(WEEK, RIGHT(timePeriod, 2) - 1, CONVERT(date, LEFT(timePeriod, 4)))) 
-		     --Se verifica que sea numérico y en función los dos ultimos digitos se genera la fecha correspondiente a la semana, a la cual se le suman 6 días para obtener el último día de la semana.
-		     WHEN frequencyNameES = 'Diario' OR
-		          frequencyNameES = 'Por hora' OR
-		          frequencyNameES = 'Diario - Días hábiles' OR
-		          frequencyNameES = 'Por minuto' AND ISNUMERIC(timePeriod) = 1 THEN CONVERT(date, timePeriod) 
-	     ELSE NULL END AS FechaEstructurada
-    FROM observation_value
-    LEFT OUTER JOIN serie ON observation_value.serieID = serie.serieID
-    LEFT OUTER JOIN indicator ON serie.indicatorID = indicator.indicatorID
-    LEFT OUTER JOIN unit_multiplier ON serie.unitMultID = unit_multiplier.unitMultID
-    LEFT OUTER JOIN frequency ON serie.freqID = frequency.freqID
-    LEFT OUTER JOIN reference_area ON serie.refAreaID = reference_area.refAreaID
-    LEFT OUTER JOIN unit ON serie.unitID = unit.unitID
-    LEFT OUTER JOIN category ON indicator.categoryID = category.categoryID
-    LEFT OUTER JOIN data_domain ON indicator.dataDomainID = data_domain.dataDomainID
-    ORDER BY reference_area.refAreaID
-		     ,indicator.indicatorID
-		     ,serie.serieID
-    ;"""
+sql="""SELECT 
+	ov.obsValue,
+	ov.obsValueID,
+	ov.timePeriod,
+	s.*,
+	i.categoryID,
+	i.FLARID,
+	i.indicatorLeyendNameEN,
+	i.indicatorLeyendNameES,
+	i.indicatorNameEN,
+	i.indicatorNameENShort,
+	i.indicatorNameES,
+	i.indicatorNameESShort,
+	i.indicatorPropriety,
+	um.unitMultValue,
+	um.unitMultValueES,
+	f.frequencyName,
+	f.frequencyNameES,
+	ra.refAreaName,
+	ra.refAreaNameES,
+	u.unitName,
+	c.categoryName,
+	dm.dataDomainName,
+	dm.dataDomainPropriety,
+	cat.categoryName,
+	CASE 
+		WHEN frequencyNameES = 'Anual' AND ISNUMERIC(timePeriod) = 1 THEN CONVERT(date, timePeriod + '-12-31') 
+	    --Se verifica que sea numérico.
+		WHEN frequencyNameES = 'Medio año, semestre' AND RIGHT(timePeriod, 1) = 1 AND timePeriod LIKE '%B%' THEN CONVERT(date, LEFT(timePeriod, 4) + '-06-30') 
+	    --Se verifica que contenga el caracter B, y en función de último digito (para este caso #1), se genera el último día del mes Junio
+		WHEN frequencyNameES = 'Medio año, semestre' AND RIGHT(timePeriod, 1) = 2 AND timePeriod LIKE '%B%' THEN CONVERT(date, LEFT(timePeriod, 4) + '-12-31') 
+	    --Se verifica que contenga el caracter B, y en función de último digito (para este caso #2),  se genera el último día del mes de Diciembre
+		WHEN frequencyNameES = 'Mensual' AND ISNUMERIC(RIGHT(timePeriod,2)) = 1 THEN DATEADD(DAY, 14, DATEADD(MONTH, RIGHT(timePeriod, 2) - 1, CONVERT(date, LEFT(timePeriod, 4))))
+		--Se verifica que el campo sea numérico.
+		WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 1 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 30, DATEADD(MONTH, 2, CONVERT(date, LEFT(timePeriod, 4)))) 
+	    --Se verifica que contenga el caracter Q, y en función de último digito (para este caso #1), se genera el último día del mes Marzo
+		WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 2 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 29, DATEADD(MONTH, 5, CONVERT(date, LEFT(timePeriod, 4)))) 
+	    --Se verifica que contenga el caracter Q, y en función de último digito (para este caso #2), se genera el último día del mes Junio
+		WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 3 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 29, DATEADD(MONTH, 8, CONVERT(date, LEFT(timePeriod, 4)))) 
+	    -- Se verifica que contenga el caracter Q, y en función de último digito (para este caso #3), se genera el último día del mes Septiembre 
+		WHEN frequencyNameES = 'Trimestral' AND RIGHT(timePeriod, 1) = 4 AND timePeriod LIKE '%Q%' THEN DATEADD(DAY, 30, DATEADD(MONTH, 11, CONVERT(date, LEFT(timePeriod, 4)))) 
+	    --Se verifica que contenga el caracter Q, y en función de último digito (para este caso #4), segenera el último día del mes Diciembre
+		WHEN frequencyNameES = 'Semanal' AND ISNUMERIC(RIGHT(timePeriod, 2)) = 1 THEN DATEADD(DAY, 6, DATEADD(WEEK, RIGHT(timePeriod, 2) - 1, CONVERT(date, LEFT(timePeriod, 4)))) 
+	    --Se verifica que sea numérico y en función los dos ultimos digitos se genera la fecha correspondiente a la semana, a la cual se le suman 6 días para obtener el último día de la semana.
+		WHEN frequencyNameES = 'Diario' OR
+	         frequencyNameES = 'Por hora' OR
+	         frequencyNameES = 'Diario - Días hábiles' OR
+	         frequencyNameES = 'Por minuto' AND ISNUMERIC(timePeriod) = 1 THEN CONVERT(date, timePeriod) 
+		--Los casos que no son transformados dado que no pertenecen a ninguna de las condiciones previas, son almacenados como '1900-01-01' 
+	    ELSE NULL END AS Fecha_Estructurada
+FROM observation_value AS ov
+LEFT OUTER JOIN serie AS s ON ov.serieID=s.serieID
+LEFT OUTER JOIN indicator AS i ON s.indicatorID=i.indicatorID
+LEFT OUTER JOIN unit_multiplier AS um ON um.unitMultID=s.unitMultID
+LEFT OUTER JOIN frequency as f on f.freqID=s.freqID
+LEFT OUTER JOIN reference_area as ra on ra.refAreaID=s.refAreaID
+LEFT OUTER JOIN unit as u on u.unitID=s.unitID
+LEFT OUTER JOIN category as c on c.categoryID=i.categoryID
+LEFT OUTER JOIN data_domain as dm on dm.dataDomainID=i.dataDomainID
+LEFT OUTER JOIN category as cat on cat.categoryID=i.categoryID
+ORDER BY refAreaID
+		,indicatorID
+		,serieID
+		,Fecha_Estructurada 
+;"""
     
 result=dbu.excecute_sql(sql)
 tdf=result[['serieID','Fecha_Estructurada','obsValue','indicatorID','refAreaID']]
